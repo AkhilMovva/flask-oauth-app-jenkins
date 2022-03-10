@@ -1,0 +1,80 @@
+pipeline {
+    agent any
+    
+    environment {
+        // tag ="dev"
+        tag = sh(returnStdout: true, script: "git rev-parse --short=10 HEAD").trim()
+        DOCKERHUB_CREDENTIALS=credentials('dockerhub')
+        env ="prod"
+    }
+
+    stages {
+        stage('checkout') {
+           steps {
+             
+                git branch: ${env}, url: 'https://github.com/AkhilMovva/flask-oauth-app-jenkins.git'
+                sh 'echo "git checkout"'
+             
+            } 
+            
+        }
+
+        stage('Docker Build and Tag') {
+            steps {
+              
+                sh 'docker build -t akhilmovva/flask-argo-jenk-image:${tag} .' 
+                sh 'echo "complete"'
+                // sh 'docker tag flask-image akhilmovva/flask-image:${tag}'
+                //sh 'docker tag flask-image akhilmovva/flask-image:$BUILD_NUMBER'
+               
+                }
+        }
+        
+        stage('Publish image to Docker Hub') {
+          
+            steps {
+                // withDockerRegistry([ credentialsId: "dockerHub", url: "" ]) {
+                // sh  'docker push akhilmovva/flask-image:${tag}'
+                // //  sh  'docker push flask-image/flask-image:$BUILD_NUMBER' 
+                // }
+                
+                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+                sh 'docker push akhilmovva/flask-argo-jenk-image:${tag}'
+            }
+        }
+        
+        stage ('image cleanup') {
+            steps{
+
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    sh '''
+                    docker rmi akhilmovva/flask-argo-jenk-image:${tag}
+                    '''
+                }
+            }
+        }
+
+        stage ('Git Push updated manifests') {
+            steps{
+                // catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    withCredentials([usernamePassword(credentialsId: 'github-ci', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                            sh '''
+                            cd manifests
+                            git init
+                            cd dev
+                            # git remote add origin https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/AkhilMovva/argocd-flask-oauth-app-jenkins.git
+                            sed -i "s,IMAGE-VAR-BASED-ENV,akhilmovva/flask-argo-jenk-image:${tag}," 3a-deployment.yaml
+                            cd ..
+                            git add dev
+                            # git add .
+                            git commit -m "Update app image tag to ${tag}"
+                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/AkhilMovva/argocd-flask-oauth-app-jenkins.git
+                            '''
+                        }
+    
+                // }
+            }
+        }
+    } 
+    
+ }

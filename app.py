@@ -40,7 +40,7 @@ google = oauth.register(
 def hello_world():
     # if session is empty - login
     email = dict(session)['profile']['email']
-    return f'Hello, you are logge in as {email}!'
+    return f'Hello, this is env and you are logge in as {email}!'
 
 
 @app.route('/login')
