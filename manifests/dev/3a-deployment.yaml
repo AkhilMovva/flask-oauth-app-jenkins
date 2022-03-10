@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: flask-oauth
+  namespace: dev-ns
 spec:
   replicas: 1
   selector:
@@ -27,17 +28,19 @@ spec:
           secret:
             secretName: google-creds
             items:
-            - key: .env
+            - key: my-api-key
               path: .env
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: flask-oauth
+  namespace: dev-ns
   labels: 
     app: flask-oauth
 spec:
-  type: LoadBalancer  
+  # type: ExternalName #LoadBalancer  
   selector:
     app: flask-oauth
   ports: 

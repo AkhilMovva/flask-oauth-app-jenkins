@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-ingress
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL:  https://github.com/AkhilMovva/argocd-flask-oauth-app-jenkins.git
+    targetRevision: HEAD
+    path: ingress
+  destination: 
+    server: https://kubernetes.default.svc # dns for k8s api server
+    namespace: ingress
+
+  syncPolicy:  # polls every 3 min # if not configure a git webhook
+    syncOptions:
+    - CreateNamespace=true
+
+    automated:
+      selfHeal: true # undo manual changes to k8s
+      prune: true # delete any objects if deleted in the repo
