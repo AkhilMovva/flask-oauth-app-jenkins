@@ -8,7 +8,7 @@ COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
 COPY app.py /flask_app/
-COPY app_decorator.py /flask_app/
+COPY auth_decorator.py /flask_app/
 # COPY db.yaml app.py /flask_app/
 # COPY templates /flask_app/templates/
 
