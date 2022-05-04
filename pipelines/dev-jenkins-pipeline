@@ -2,29 +2,32 @@ pipeline {
     agent any
     
     environment {
-        // tag ="dev"
-        // tag = sh(returnStdout: true, script: "git rev-parse --short=10 HEAD").trim()
-        tag = ''
+        // TAG = sh(returnStdout: true, script: "git rev-parse --short=10 HEAD").trim()
+        TAG = 'dev2'
         DOCKERHUB_CREDENTIALS=credentials('dockerhub')
-        env ="dev"
+        ENVC ="dev"
     }
 
     stages {
         stage('checkout') {
            steps {
              
-                git branch: ${env}, url: 'https://github.com/AkhilMovva/flask-oauth-app-jenkins.git'
+                git branch: env.ENVC, url: 'https://github.com/AkhilMovva/flask-oauth-app-jenkins.git'
                 sh 'echo "git checkout"'
-                tag = sh(returnStdout: true, script: "git rev-parse --short=10 HEAD").trim()
-             
+                // script{
+                //     TAG = sh(returnStdout: true, script: "git rev-parse --short=10 HEAD").trim()
+                //     echo TAG
+                // }
+                // echo "env.tag is '${env.tag}'"
             } 
             
         }
 
         stage('Docker Build and Tag') {
             steps {
-              
-                sh 'docker build -t akhilmovva/flask-argo-jenk-image:${tag} .' 
+                // echo "tag is '${tag}'"
+                echo "TAG is '${TAG}'"
+                sh "docker build -t akhilmovva/flask-argo-jenk-image:'${TAG}' ."
                 sh 'echo "complete"'
                 // sh 'docker tag flask-image akhilmovva/flask-image:${tag}'
                 //sh 'docker tag flask-image akhilmovva/flask-image:$BUILD_NUMBER'
@@ -41,7 +44,7 @@ pipeline {
                 // }
                 
                 sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-                sh 'docker push akhilmovva/flask-argo-jenk-image:${tag}'
+                sh "docker push akhilmovva/flask-argo-jenk-image:'${TAG}'"
             }
         }
         
@@ -50,7 +53,7 @@ pipeline {
 
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     sh '''
-                    docker rmi akhilmovva/flask-argo-jenk-image:${tag}
+                    docker rmi akhilmovva/flask-argo-jenk-image:${TAG}
                     '''
                 }
             }
@@ -61,16 +64,17 @@ pipeline {
                 // catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     withCredentials([usernamePassword(credentialsId: 'github-ci', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
                             sh '''
+                            # git pull https://github.com/AkhilMovva/argocd-flask-oauth-app-jenkins.git
                             cd manifests
                             git init
                             cd dev
                             # git remote add origin https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/AkhilMovva/argocd-flask-oauth-app-jenkins.git
-                            sed -i "s,IMAGE-VAR-BASED-ENV,akhilmovva/flask-argo-jenk-image:${tag}," 3a-deployment.yaml
+                            sed -i "s,IMAGE-VAR-BASED-ENV,akhilmovva/flask-argo-jenk-image:${TAG}," 3a-deployment.yaml
                             cd ..
-                            git add dev
-                            # git add .
-                            git commit -m "Update app image tag to ${tag}"
-                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/AkhilMovva/argocd-flask-oauth-app-jenkins.git
+                            # git add dev/3a-deployment.yaml
+                            git add .
+                            git commit -m "Update app image tag to ${TAG}"
+                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/AkhilMovva/argocd-flask-oauth-app-jenkins.git master --force
                             '''
                         }
     
